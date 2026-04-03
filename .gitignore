@@ -1,0 +1,14 @@
+# Rust
+backend/target/
+
+# Environment variables (never commit these)
+.env
+.env.local
+
+# VSCode
+.vscode/*
+!.vscode/extensions.json
+
+# OS files
+.DS_Store
+Thumbs.db
