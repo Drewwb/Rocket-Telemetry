@@ -2,6 +2,8 @@
 #![allow(unused_variables)]
 
 use rand::prelude::*;
+use std::thread;
+use std::time::Duration;
 
 #[derive(Debug)]
 struct TelemetryReading {
@@ -13,7 +15,7 @@ struct TelemetryReading {
     stage: LaunchStage,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum LaunchStage{
     PreIgnition,
     Ignition,
@@ -92,21 +94,21 @@ fn add_noise (value: f64, max: f64) -> f64 {
     value + noise
 }
 
-fn main() {
-    // let reading: TelemetryReading = generate_reading(LaunchStage::FullThrust);
-    // println!("Telemetry Reading: {:?}", reading);
-    let stages: Vec<LaunchStage> = vec![
-        LaunchStage::PreIgnition,
-        LaunchStage::Ignition,
-        LaunchStage::FullThrust,
-        LaunchStage::MaxQ,
-        LaunchStage::ThrottleDown,
-        LaunchStage::ThrottleUp,
-        LaunchStage::MainEngineCutoff,
-    ];
-
-    for stage in stages {
-        let reading: TelemetryReading = generate_reading(stage);
-        println!("Telemetry Reading: {:?}", reading);
+fn run_stage(stage: LaunchStage, duration: Duration) {
+    let start = std::time::Instant::now();
+    while start.elapsed() < duration {
+        let reading = generate_reading(stage);
+        println!("{:?}", reading);
+        thread::sleep(Duration::from_millis(100));
     }
+}
+
+fn main() {
+    run_stage(LaunchStage::PreIgnition, Duration::from_secs(3));
+    run_stage(LaunchStage::Ignition, Duration::from_secs(2));
+    run_stage(LaunchStage::FullThrust, Duration::from_secs(8));
+    run_stage(LaunchStage::MaxQ, Duration::from_secs(4));
+    run_stage(LaunchStage::ThrottleDown, Duration::from_secs(3));
+    run_stage(LaunchStage::ThrottleUp, Duration::from_secs(3));
+    run_stage(LaunchStage::MainEngineCutoff, Duration::from_secs(2));
 }
