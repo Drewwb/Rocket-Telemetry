@@ -103,12 +103,26 @@ fn run_stage(stage: LaunchStage, duration: Duration) {
     }
 }
 
-fn main() {
-    run_stage(LaunchStage::PreIgnition, Duration::from_secs(3));
-    run_stage(LaunchStage::Ignition, Duration::from_secs(2));
-    run_stage(LaunchStage::FullThrust, Duration::from_secs(8));
-    run_stage(LaunchStage::MaxQ, Duration::from_secs(4));
-    run_stage(LaunchStage::ThrottleDown, Duration::from_secs(3));
-    run_stage(LaunchStage::ThrottleUp, Duration::from_secs(3));
-    run_stage(LaunchStage::MainEngineCutoff, Duration::from_secs(2));
+#[tokio::main]
+async fn main() {
+    let app = axum::Router::new()
+        .route("/health", axum::routing::get(health_handler));
+
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+
+    println!("Server running on http://0.0.0.0:3000");
+    axum::serve(listener, app).await.unwrap();
+
+
+    // run_stage(LaunchStage::PreIgnition, Duration::from_secs(3));
+    // run_stage(LaunchStage::Ignition, Duration::from_secs(2));
+    // run_stage(LaunchStage::FullThrust, Duration::from_secs(8));
+    // run_stage(LaunchStage::MaxQ, Duration::from_secs(4));
+    // run_stage(LaunchStage::ThrottleDown, Duration::from_secs(3));
+    // run_stage(LaunchStage::ThrottleUp, Duration::from_secs(3));
+    // run_stage(LaunchStage::MainEngineCutoff, Duration::from_secs(2));
+}
+
+async fn health_handler() -> &'static str {
+    "OK"
 }
