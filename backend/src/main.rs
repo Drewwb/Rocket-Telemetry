@@ -6,8 +6,9 @@ use std::thread;
 use std::time::Duration;
 use axum::extract::ws::{Message, WebSocketUpgrade, WebSocket};
 use axum::response::Response;
+use serde::Serialize;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 struct TelemetryReading {
     chamber_pressure: f64,
     thrust: f64,
@@ -17,7 +18,7 @@ struct TelemetryReading {
     stage: LaunchStage,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize)]
 enum LaunchStage{
     PreIgnition,
     Ignition,
@@ -152,7 +153,7 @@ async fn handle_websocket(mut socket: WebSocket) {
             //generate a reading for this stage
             let reading: TelemetryReading = generate_reading(stage);
             //format it as a string
-            let message = format!("{:?}", reading);
+            let message = serde_json::to_string(&reading).unwrap();
             //send it over the socket, break if client disconnected
             if socket.send(Message::Text(message.into())).await.is_err() {
                 println!("Client disconnected");
