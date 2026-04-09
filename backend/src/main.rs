@@ -4,6 +4,8 @@
 use rand::prelude::*;
 use std::thread;
 use std::time::Duration;
+use axum::extract::ws::{Message, WebSocketUpgrade, WebSocket};
+use axum::response::Response;
 
 #[derive(Debug)]
 struct TelemetryReading {
@@ -106,7 +108,8 @@ fn run_stage(stage: LaunchStage, duration: Duration) {
 #[tokio::main]
 async fn main() {
     let app = axum::Router::new()
-        .route("/health", axum::routing::get(health_handler));
+        .route("/health", axum::routing::get(health_handler))
+        .route("/ws", axum::routing::get(ws_handler));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
 
@@ -125,4 +128,38 @@ async fn main() {
 
 async fn health_handler() -> &'static str {
     "OK"
+}
+
+async fn ws_handler(ws: WebSocketUpgrade) -> Response {
+    ws.on_upgrade(handle_websocket)
+}
+
+async fn handle_websocket(mut socket: WebSocket) {
+    let stages = [
+        (LaunchStage::PreIgnition, 3),
+        (LaunchStage::Ignition, 2),
+        (LaunchStage::FullThrust, 8),
+        (LaunchStage::MaxQ, 4),
+        (LaunchStage::ThrottleDown, 3),
+        (LaunchStage::ThrottleUp, 3),
+        (LaunchStage::MainEngineCutoff, 2),
+    ];
+
+    for (stage, duration_secs) in stages {
+        let start = std::time::Instant::now();
+        
+        while start.elapsed() < Duration::from_secs(duration_secs) {
+            //generate a reading for this stage
+            let reading: TelemetryReading = generate_reading(stage);
+            //format it as a string
+            let message = format!("{:?}", reading);
+            //send it over the socket, break if client disconnected
+            if socket.send(Message::Text(message.into())).await.is_err() {
+                println!("Client disconnected");
+                return;
+            }
+            // 4. sleep 100ms
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+    }
 }
