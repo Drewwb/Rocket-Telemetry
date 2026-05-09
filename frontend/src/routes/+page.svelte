@@ -11,14 +11,49 @@
     }
 
   let reading: TelemetryReading | null = $state(null);
+  let history: TelemetryReading[] = $state([]);
 
   onMount(() => {
     const ws = new WebSocket('ws://localhost:3000/ws');
 
     ws.onmessage = (event) => {
       reading = JSON.parse(event.data);
+      if (reading){
+        history = [...history, reading].slice(-100);
+      }
     };
   });
+
+    let canvas: HTMLCanvasElement | null = $state(null);
+
+    $effect(() => {
+        // guard clause — don't run if canvas isn't mounted yet
+        if (!canvas) return;
+        
+        const ctx = canvas.getContext('2d')!;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        if (history.length < 2) return;
+
+        ctx.beginPath();
+        ctx.strokeStyle = '#00ff88';
+        ctx.lineWidth = 2;
+
+        history.forEach((reading, index) => {
+            const x = (index / (history.length - 1)) * canvas!.width;
+            const y = canvas!.height - (reading.chamber_pressure / 130) * canvas!.height;
+            
+            if (index === 0) {
+                ctx.moveTo(x, y);
+            } else {
+                ctx.lineTo(x, y);
+            }
+        });
+
+        ctx.stroke();
+    });
+
 </script>
 
 <style>
@@ -64,12 +99,19 @@
   border-color: #ff3333;
   color: #ff3333;
 }
+
+canvas {
+  border: 1px solid #00ff88;
+  margin-top: 2rem;
+  display: block;
+}
 </style>
 
 <main>
     <h1>🚀 Rocket Telemetry</h1>
     {#if reading}
         <p>Stage: {reading.stage}</p>
+        <p>History length: {history.length}</p>
 
         <div class="cards">
             <div id="chamber_pressure" class="card" class:warning={reading.chamber_pressure > 109 && reading.chamber_pressure <= 125} class:critical={reading.chamber_pressure > 125}>
@@ -93,6 +135,8 @@
                 <p class="value">{reading.vibration.toFixed(2)} g</p>
             </div>
         </div>
+
+        <canvas bind:this={canvas} width="600" height="200"></canvas>
     {:else}
         <p>Waiting for telemetry...</p>
     {/if}
